@@ -1,0 +1,56 @@
+# Promote a service's image tag from one environment to the next by pull
+# request. Argo CD applies it once merged (prod still needs a manual sync).
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Chart to promote
+        type: choice
+        options: [payment-gateway, webhook-relay, url-shortener]
+      from:
+        description: Source environment
+        type: choice
+        options: [dev, staging]
+      to:
+        description: Target environment
+        type: choice
+        options: [staging, prod]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the direction
+        run: |
+          case "${{ inputs.from }}->${{ inputs.to }}" in
+            dev-\>staging|staging-\>prod) ;;
+            *) echo "only dev->staging and staging->prod are allowed" >&2; exit 1 ;;
+          esac
+      - name: Copy the image tag
+        id: tag
+        run: |
+          src="environments/${{ inputs.from }}/${{ inputs.service }}.yaml"
+          dst="environments/${{ inputs.to }}/${{ inputs.service }}.yaml"
+          tag=$(yq '.image.tag' "$src")
+          old=$(yq '.image.tag' "$dst")
+          if [ "$tag" = "$old" ]; then echo "already at $tag" >&2; exit 1; fi
+          yq -i ".image.tag = \"$tag\"" "$dst"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: promote/${{ inputs.service }}-${{ inputs.to }}-${{ steps.tag.outputs.tag }}
+          commit-message: "chore(${{ inputs.to }}): promote ${{ inputs.service }} to ${{ steps.tag.outputs.tag }}"
+          title: "Promote ${{ inputs.service }} ${{ steps.tag.outputs.tag }} to ${{ inputs.to }}"
+          body: |
+            `${{ inputs.service }}` in **${{ inputs.to }}**: `${{ steps.tag.outputs.old }}` → `${{ steps.tag.outputs.tag }}` (currently running in ${{ inputs.from }}).
+
+            CI renders and validates the change; Argo CD rolls it out after merge.
+          labels: promotion
