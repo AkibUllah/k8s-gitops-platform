@@ -1,0 +1,1 @@
+{{ include "platform-lib.test" (dict "root" . "component" "" "values" .Values) }}

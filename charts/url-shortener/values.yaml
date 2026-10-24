@@ -1,0 +1,191 @@
+# Default values for url-shortener. Environment overrides live in
+# environments/<env>/url-shortener.yaml; see values.schema.json for the contract.
+
+global:
+  partOf: commerce-platform
+  environment: ""
+  team: growth
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/akibullah/url-shortener-analytics
+  # Defaults to the chart's appVersion. "latest" is rejected at render time.
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+replicaCount: 2
+containerPort: 8000
+command: []
+args: []
+
+# Non-secret settings, rendered into a ConfigMap and loaded with envFrom.
+env:
+  SHORTENER_BASE_URL: http://localhost:8000
+  SHORTENER_RATE_LIMIT_PER_MINUTE: "60"
+  SHORTENER_CACHE_TTL_SECONDS: "3600"
+  SHORTENER_MIN_CODE_LENGTH: "6"
+  SHORTENER_LOG_LEVEL: INFO
+extraEnv: []
+
+# SHORTENER_API_KEY and SHORTENER_IP_HASH_SECRET. existingSecret in
+# staging/prod; `secrets` on dev only.
+existingSecret: ""
+secrets: {}
+
+database:
+  envVar: SHORTENER_DATABASE_URL
+  scheme: postgresql+psycopg
+  existingSecret: ""
+  existingSecretKey: url
+
+# In-chart PostgreSQL for local/dev/CI clusters. Staging and prod use a managed
+# database via database.existingSecret.
+postgresql:
+  enabled: false
+  image: postgres:16.4-alpine
+  auth:
+    username: shortener
+    database: shortener
+    password: ""
+    existingSecret: ""
+  storage: 2Gi
+  storageClass: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# In-chart Redis (cache + rate limiter) for dev; a managed instance elsewhere.
+redis:
+  enabled: false
+  image: redis:7.4-alpine
+  maxmemory: 64mb
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      memory: 96Mi
+
+cache:
+  envVar: SHORTENER_REDIS_URL
+  # Used when redis.enabled is false, e.g. rediss://primary.cache.internal:6380/0
+  url: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 160Mi
+  limits:
+    memory: 320Mi
+
+# Pod and container security defaults. The images declare a named USER; a
+# numeric UID lets the kubelet verify runAsNonRoot.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  startup:
+    httpGet: {path: /health, port: http}
+    periodSeconds: 3
+    failureThreshold: 30
+  # /health checks PostgreSQL and Redis. Liveness only checks the process
+  # accepts connections, so a datastore outage removes pods from the Service
+  # (readiness) instead of restarting all of them.
+  liveness:
+    tcpSocket: {port: http}
+    periodSeconds: 15
+    failureThreshold: 3
+  readiness:
+    httpGet: {path: /health, port: http}
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+# Seconds to keep serving after the pod is marked terminating, so the
+# endpoint is gone from every kube-proxy / ingress before SIGTERM.
+preStopSleepSeconds: 5
+terminationGracePeriodSeconds: 30
+tmpSizeLimit: 64Mi
+workloadAnnotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: null
+
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: null
+
+# The services do not expose Prometheus metrics yet; enable once they do.
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+networkPolicy:
+  enabled: true
+  # Namespaces allowed to reach the http port besides this platform's own pods.
+  ingressNamespaces: [ingress-nginx]
+  egress:
+    enabled: false
+    # Each entry: {cidr, except: [...], ports: [...]}; ports default to egress.ports.
+    # e.g. [{cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}]
+    cidrs: []
+    ports: [443]
+
+topologySpread:
+  enabled: true
+  topologyKeys: [kubernetes.io/hostname]
+  whenUnsatisfiable: ScheduleAnyway
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+extraVolumes: []
+extraVolumeMounts: []
+
+tests:
+  image: curlimages/curl:8.10.1
+  path: /health

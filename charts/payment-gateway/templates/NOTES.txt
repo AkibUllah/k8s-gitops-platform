@@ -1,0 +1,15 @@
+{{- $full := include "platform-lib.fullname" . -}}
+payment-gateway {{ .Chart.AppVersion }} is deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Image: {{ include "platform-lib.image" (dict "root" . "values" .Values) }}
+{{- if .Values.ingress.enabled }}
+URL:   {{ range .Values.ingress.hosts }}http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ end }}
+{{- else }}
+
+Reach it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ $full }} 8080:{{ .Values.service.port }}
+  curl -s localhost:8080/health
+{{- end }}
+
+Run the smoke test:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

@@ -1,0 +1,39 @@
+# Exercises every optional template (rendered and validated in CI).
+image:
+  tag: 1.0.4
+  digest: sha256:0b4c3f2d9a8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a
+secrets:
+  BKASH_WEBHOOK_SECRET: ci
+postgresql:
+  enabled: true
+ingress:
+  enabled: true
+  hosts:
+    - host: pay.ci.local
+      paths:
+        - path: /v1
+        - path: /webhooks
+          pathType: Prefix
+  tls:
+    - secretName: pay-ci-tls
+      hosts: [pay.ci.local]
+autoscaling:
+  enabled: true
+  targetMemoryUtilizationPercentage: 80
+pdb:
+  enabled: true
+  maxUnavailable: 1
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      - cidr: 0.0.0.0/0
+        except: [10.0.0.0/8]
+imagePullSecrets:
+  - name: ghcr-pull
+podAnnotations:
+  ci.example/annotated: "true"

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: url-shortener
+description: Short links with QR codes and click analytics, cached in Redis.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/AkibUllah/url-shortener-analytics
+sources:
+  - https://github.com/AkibUllah/url-shortener-analytics
+  - https://github.com/AkibUllah/k8s-gitops-platform
+maintainers:
+  - name: Akib Jafor
+    url: https://github.com/AkibUllah
+dependencies:
+  - name: platform-lib
+    version: 1.0.0
+    repository: file://../platform-lib

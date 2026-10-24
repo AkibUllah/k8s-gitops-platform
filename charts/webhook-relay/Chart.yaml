@@ -1,0 +1,17 @@
+apiVersion: v2
+name: webhook-relay
+description: Durable webhook fan-out with HMAC signatures, retries, circuit breakers and replay; API and delivery worker as separate Deployments.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/AkibUllah/webhook-relay
+sources:
+  - https://github.com/AkibUllah/webhook-relay
+  - https://github.com/AkibUllah/k8s-gitops-platform
+maintainers:
+  - name: Akib Jafor
+    url: https://github.com/AkibUllah
+dependencies:
+  - name: platform-lib
+    version: 1.0.0
+    repository: file://../platform-lib

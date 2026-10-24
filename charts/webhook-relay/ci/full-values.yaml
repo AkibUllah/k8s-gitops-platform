@@ -1,0 +1,29 @@
+image:
+  tag: 1.1.2
+secrets:
+  API_KEY: ci
+postgresql:
+  enabled: true
+worker:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+  pdb:
+    enabled: true
+ingress:
+  enabled: true
+  hosts:
+    - host: hooks.ci.local
+  tls:
+    - secretName: hooks-ci-tls
+      hosts: [hooks.ci.local]
+autoscaling:
+  enabled: true
+pdb:
+  enabled: true
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      - cidr: 0.0.0.0/0
+        ports: [443, 80]

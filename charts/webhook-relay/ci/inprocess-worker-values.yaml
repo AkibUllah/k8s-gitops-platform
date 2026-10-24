@@ -1,0 +1,5 @@
+# Dedicated worker disabled: the API must run the delivery loop itself.
+image:
+  tag: 1.1.2
+worker:
+  enabled: false

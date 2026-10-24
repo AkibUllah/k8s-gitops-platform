@@ -1,0 +1,22 @@
+image:
+  tag: 1.0.3
+secrets:
+  SHORTENER_API_KEY: ci
+  SHORTENER_IP_HASH_SECRET: ci
+postgresql:
+  enabled: true
+redis:
+  enabled: true
+ingress:
+  enabled: true
+  hosts:
+    - host: s.ci.local
+  tls:
+    - secretName: s-ci-tls
+      hosts: [s.ci.local]
+autoscaling:
+  enabled: true
+pdb:
+  enabled: true
+serviceMonitor:
+  enabled: true

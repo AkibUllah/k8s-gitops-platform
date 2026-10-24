@@ -1,0 +1,440 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "values",
+  "type": "object",
+  "required": [
+    "image",
+    "resources",
+    "probes",
+    "service",
+    "autoscaling",
+    "pdb",
+    "networkPolicy"
+  ],
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "partOf": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "",
+            "local",
+            "dev",
+            "staging",
+            "prod"
+          ]
+        },
+        "team": {
+          "type": "string"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "not": {
+            "const": "latest"
+          }
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^(|sha256:[a-f0-9]{64})$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "containerPort": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "extraEnv": {
+      "type": "array"
+    },
+    "existingSecret": {
+      "type": "string"
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "type",
+        "port"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "host"
+            ]
+          }
+        },
+        "tls": {
+          "type": "array"
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "ingressNamespaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "egress": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "cidrs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "cidr"
+                ],
+                "properties": {
+                  "cidr": {
+                    "type": "string"
+                  },
+                  "except": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ports": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            },
+            "ports": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "postgresql": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^.+:[^:/]+$",
+          "not": {
+            "pattern": ":latest$"
+          }
+        },
+        "storage": {
+          "type": "string"
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "envVar": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        }
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": [
+        "requests",
+        "limits"
+      ],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "required": [
+            "cpu",
+            "memory"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "required": [
+            "memory"
+          ]
+        }
+      }
+    },
+    "probes": {
+      "type": "object"
+    },
+    "autoscaling": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 100
+        },
+        "targetMemoryUtilizationPercentage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 10,
+          "maximum": 100
+        }
+      }
+    },
+    "pdb": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minAvailable": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "maxUnavailable": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "resources",
+        "autoscaling",
+        "pdb"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "type": "object",
+              "required": [
+                "cpu",
+                "memory"
+              ]
+            },
+            "limits": {
+              "type": "object",
+              "required": [
+                "memory"
+              ]
+            }
+          }
+        },
+        "probes": {
+          "type": "object"
+        },
+        "autoscaling": {
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "targetCPUUtilizationPercentage": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 100
+            },
+            "targetMemoryUtilizationPercentage": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 10,
+              "maximum": 100
+            }
+          }
+        },
+        "pdb": {
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minAvailable": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "maxUnavailable": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

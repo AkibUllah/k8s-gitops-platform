@@ -1,0 +1,4 @@
+{{- /* The API runs the delivery loop in-process only when there is no dedicated worker. */}}
+{{- $_ := set .Values.env "WORKER_ENABLED" (ternary "false" "true" .Values.worker.enabled | toString) }}
+{{ include "platform-lib.app" . }}
+{{ include "platform-lib.component" (dict "root" . "component" "worker") }}
