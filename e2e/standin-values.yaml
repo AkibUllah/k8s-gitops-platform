@@ -1,0 +1,10 @@
+# Used only when the service images cannot be built (e.g. the source repos are
+# unreachable): a tiny HTTP server that answers /health on port 8000, so the
+# charts, probes, policies and network wiring are still exercised end to end.
+image:
+  repository: traefik/whoami
+  tag: v1.10.3
+  pullPolicy: IfNotPresent
+args: ["--port=8000"]
+worker:
+  enabled: false

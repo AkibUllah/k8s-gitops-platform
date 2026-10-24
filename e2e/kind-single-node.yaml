@@ -1,0 +1,16 @@
+# For small or busy machines: everything on one node.
+#   KIND_CONFIG=e2e/kind-single-node.yaml make e2e-local
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: gitops-e2e
+nodes:
+  - role: control-plane
+# Generous kubeadm timeouts: shared CI runners and laptops can take minutes to
+# start the static control-plane pods, and the defaults then fail the bootstrap.
+kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    timeouts:
+      controlPlaneComponentHealthCheck: 10m0s
+      kubeletHealthCheck: 10m0s
+      kubernetesAPICall: 5m0s

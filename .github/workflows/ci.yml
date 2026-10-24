@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: lint, schemas, policies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache tools and schemas
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin
+            ~/.cache/kubeconform
+          key: tools-${{ runner.os }}-${{ hashFiles('scripts/install-tools.sh') }}
+      - name: Install pinned tools
+        run: ./scripts/install-tools.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Validate (helm lint, render, kubeconform x2 versions, conftest, negative checks)
+        run: ./scripts/validate.sh
+      - name: Upload rendered manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-manifests
+          path: build/rendered
+          retention-days: 7
+
+  e2e:
+    name: kind e2e
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/bin
+          key: tools-${{ runner.os }}-${{ hashFiles('scripts/install-tools.sh') }}
+      - name: Install pinned tools
+        run: ./scripts/install-tools.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # Builds each service image from its public repository's Dockerfile; a
+      # stand-in HTTP server is used for any that cannot be built.
+      - name: Create cluster, install charts, test
+        run: ./scripts/e2e-kind.sh
+        env:
+          IMAGE_SOURCE: git

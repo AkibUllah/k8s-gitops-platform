@@ -1,0 +1,11 @@
+# Layered on top of environments/dev/<chart>.yaml for the kind e2e run.
+global:
+  environment: local
+image:
+  tag: e2e
+  pullPolicy: Never
+replicaCount: 1
+ingress:
+  enabled: false
+postgresql:
+  storage: 256Mi
