@@ -1,0 +1,49 @@
+# staging: production-shaped. Secrets come from External Secrets (see
+# docs/secrets.md); the database is a managed PostgreSQL instance.
+global:
+  environment: staging
+
+image:
+  tag: 1.1.0-rc.2
+
+replicaCount: 2
+
+env:
+  APP_ENV: staging
+
+existingSecret: payment-gateway-providers
+database:
+  existingSecret: payment-gateway-db
+  existingSecretKey: url
+
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+  hosts:
+    - host: pay.staging.dokan.com.bd
+  tls:
+    - secretName: payment-gateway-tls
+      hosts: [pay.staging.dokan.com.bd]
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      # Managed PostgreSQL subnet.
+      - cidr: 10.40.0.0/20
+        ports: [5432]
+      # Payment providers and merchant webhook endpoints on the internet.
+      - cidr: 0.0.0.0/0
+        except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+        ports: [443]

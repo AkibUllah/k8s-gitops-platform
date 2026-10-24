@@ -1,0 +1,37 @@
+# dev: shared development cluster. Tracks main; CI bumps image.tag on merge.
+global:
+  environment: dev
+
+image:
+  tag: main-4c1e9a2
+
+replicaCount: 1
+
+env:
+  APP_ENV: development
+  LOG_LEVEL: DEBUG
+
+# Sandbox provider secrets only. Real credentials never live in this repo.
+secrets:
+  BKASH_WEBHOOK_SECRET: bkash-sandbox-secret
+  SSLCOMMERZ_WEBHOOK_SECRET: sslcz-sandbox-secret
+  STRIPE_WEBHOOK_SECRET: whsec_sandbox_secret
+
+postgresql:
+  enabled: true
+  storage: 1Gi
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 160Mi
+  limits:
+    memory: 320Mi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: pay.dev.dokan.com.bd
+
+topologySpread:
+  enabled: false

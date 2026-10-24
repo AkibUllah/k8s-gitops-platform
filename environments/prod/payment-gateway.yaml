@@ -1,0 +1,59 @@
+# prod: promoted from staging by changing image.tag in a reviewed PR
+# (see the promote workflow). Argo CD syncs prod manually.
+global:
+  environment: prod
+
+image:
+  tag: 1.0.4
+
+env:
+  APP_ENV: production
+  LOG_LEVEL: INFO
+
+existingSecret: payment-gateway-providers
+database:
+  existingSecret: payment-gateway-db
+  existingSecretKey: url
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 320Mi
+  limits:
+    memory: 640Mi
+
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/limit-rps: "200"
+  hosts:
+    - host: pay.dokan.com.bd
+  tls:
+    - secretName: payment-gateway-tls
+      hosts: [pay.dokan.com.bd]
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 65
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+topologySpread:
+  topologyKeys:
+    - topology.kubernetes.io/zone
+    - kubernetes.io/hostname
+
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      - cidr: 10.50.0.0/20
+        ports: [5432]
+      - cidr: 0.0.0.0/0
+        except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+        ports: [443]

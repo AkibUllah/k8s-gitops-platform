@@ -1,0 +1,38 @@
+global:
+  environment: dev
+
+image:
+  tag: main-9b07d3f
+
+replicaCount: 1
+
+env:
+  APP_ENV: development
+  LOG_LEVEL: DEBUG
+  # Faster retries make the dev loop observable.
+  BACKOFF_SCHEDULE: "5,15,60,300"
+
+secrets:
+  API_KEY: dev-relay-admin-key
+
+postgresql:
+  enabled: true
+  storage: 1Gi
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 160Mi
+  limits:
+    memory: 320Mi
+
+worker:
+  replicaCount: 1
+
+ingress:
+  enabled: true
+  hosts:
+    - host: hooks.dev.dokan.com.bd
+
+topologySpread:
+  enabled: false

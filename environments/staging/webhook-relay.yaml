@@ -1,0 +1,51 @@
+global:
+  environment: staging
+
+image:
+  tag: 1.2.0-rc.1
+
+replicaCount: 2
+
+env:
+  APP_ENV: staging
+
+existingSecret: webhook-relay-admin
+database:
+  existingSecret: webhook-relay-db
+  existingSecretKey: url
+
+worker:
+  replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+  hosts:
+    - host: hooks.staging.dokan.com.bd
+  tls:
+    - secretName: webhook-relay-tls
+      hosts: [hooks.staging.dokan.com.bd]
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      - cidr: 10.40.0.0/20
+        ports: [5432]
+      # Subscriber endpoints are arbitrary HTTPS URLs.
+      - cidr: 0.0.0.0/0
+        except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+        ports: [443]

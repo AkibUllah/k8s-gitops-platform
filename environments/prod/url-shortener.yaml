@@ -1,0 +1,54 @@
+global:
+  environment: prod
+
+image:
+  tag: 1.0.3
+
+env:
+  SHORTENER_BASE_URL: https://s.dokan.com.bd
+  SHORTENER_RATE_LIMIT_PER_MINUTE: "120"
+
+existingSecret: url-shortener-keys
+database:
+  existingSecret: url-shortener-db
+  existingSecretKey: url
+cache:
+  url: rediss://shortener-prod.cache.internal:6380/0
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 384Mi
+
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: s.dokan.com.bd
+  tls:
+    - secretName: url-shortener-tls
+      hosts: [s.dokan.com.bd]
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 12
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+topologySpread:
+  topologyKeys:
+    - topology.kubernetes.io/zone
+    - kubernetes.io/hostname
+
+networkPolicy:
+  egress:
+    enabled: true
+    cidrs:
+      - cidr: 10.50.0.0/20
+        ports: [5432, 6380]

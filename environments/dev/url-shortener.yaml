@@ -1,0 +1,30 @@
+global:
+  environment: dev
+
+image:
+  tag: main-e57a210
+
+replicaCount: 1
+
+env:
+  SHORTENER_BASE_URL: https://s.dev.dokan.com.bd
+  SHORTENER_LOG_LEVEL: DEBUG
+
+secrets:
+  SHORTENER_API_KEY: dev-api-key-change-me
+  SHORTENER_IP_HASH_SECRET: dev-ip-hash-secret
+
+postgresql:
+  enabled: true
+  storage: 1Gi
+
+redis:
+  enabled: true
+
+ingress:
+  enabled: true
+  hosts:
+    - host: s.dev.dokan.com.bd
+
+topologySpread:
+  enabled: false
