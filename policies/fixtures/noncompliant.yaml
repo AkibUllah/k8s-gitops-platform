@@ -1,0 +1,27 @@
+# Deliberately breaks most rules; validate.sh asserts the policies reject it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-admin
+  labels:
+    platform.akibullah.dev/environment: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-admin
+  template:
+    metadata:
+      labels:
+        app: legacy-admin
+    spec:
+      hostNetwork: true
+      containers:
+        - name: admin
+          image: legacy/admin:latest
+          securityContext:
+            privileged: true
+      volumes:
+        - name: docker
+          hostPath:
+            path: /var/run/docker.sock
