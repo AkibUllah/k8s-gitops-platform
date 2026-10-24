@@ -1,0 +1,48 @@
+# Guard rails for every commerce application: one source repo, commerce-*
+# namespaces only, and no cluster-scoped objects except the namespaces themselves.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: commerce
+  namespace: argocd
+spec:
+  description: Payment gateway, webhook relay and URL shortener across dev, staging and prod.
+  sourceRepos:
+    - https://github.com/AkibUllah/k8s-gitops-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: commerce-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+  orphanedResources:
+    warn: true
+  roles:
+    - name: release-managers
+      description: May sync any environment, including prod.
+      policies:
+        - p, proj:commerce:release-managers, applications, sync, commerce/*, allow
+        - p, proj:commerce:release-managers, applications, get, commerce/*, allow
+      groups:
+        - dokan:release-managers
+    - name: developers
+      description: May sync dev and view everything.
+      policies:
+        - p, proj:commerce:developers, applications, get, commerce/*, allow
+        - p, proj:commerce:developers, applications, sync, commerce/*-dev, allow
+      groups:
+        - dokan:developers
+  syncWindows:
+    # No automated or manual prod syncs during the Friday-evening sales peak (Dhaka time).
+    - kind: deny
+      schedule: "0 12 * * 5"
+      duration: 6h
+      applications:
+        - "*-prod"
+      manualSync: false
+      timeZone: Asia/Dhaka
