@@ -1,0 +1,15 @@
+# rendered output and vendored dependencies
+/build/
+charts/*/charts/
+kustomize/base/charts/
+*.tgz
+
+# local overrides and secrets
+*.local.yaml
+.env
+*.dec.yaml
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
