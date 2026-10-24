@@ -1,0 +1,32 @@
+{
+  "name": "k8s-gitops-platform",
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "1.36.4",
+      "helm": "3.22.0",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/python:1": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb"
+  },
+  "postCreateCommand": "./scripts/install-tools.sh && make validate",
+  "postStartCommand": "nohup make demo-up > /tmp/demo-up.log 2>&1 &",
+  "remoteEnv": {
+    "PATH": "${containerEnv:HOME}/.local/bin:${containerEnv:PATH}"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "tsandall.opa",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

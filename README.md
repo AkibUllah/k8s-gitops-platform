@@ -9,6 +9,15 @@ GitOps delivery for three of my services (a payment gateway, a webhook relay and
 ![Policies](https://img.shields.io/badge/policies-conftest%20%2F%20rego-7D9199)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+## Try it live
+
+| | |
+|---|---|
+| Run in your browser | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/AkibUllah/k8s-gitops-platform?quickstart=1) — installs the pinned toolchain, runs `make validate`, then `make demo-up` creates a 3-node kind cluster, builds the three service images from their repositories and installs every chart (progress in `/tmp/demo-up.log`). Then: `kubectl -n commerce-e2e get pods`, `kubectl -n commerce-e2e port-forward svc/url-shortener 8080:80`. Needs a 4-core / 8 GB machine type. |
+| Local | `make tools && make validate && make e2e-local` (see Quick Start) |
+
+There is no Render blueprint or GitHub Pages site: the deliverable is cluster configuration, and the Codespace runs it on a real (kind) cluster.
+
 ## Why this exists
 
 Each of these services started life with a `docker-compose.yml`, which is fine until there are three of them, three environments and more than one person deploying. The questions then are the boring, important ones: is staging actually shaped like prod, who changed the replica count, why does the payment service run as root, which version is in prod right now. This repo answers them the GitOps way. Git holds the desired state, Argo CD makes the clusters match it, and CI refuses any change that renders invalid manifests or breaks a security rule, before it can be merged.
