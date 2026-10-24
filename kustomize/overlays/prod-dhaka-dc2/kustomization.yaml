@@ -1,0 +1,35 @@
+# Second production site: an on-prem cluster in a Dhaka data centre.
+# - nodes carry no zone label, so spread by hostname only and pin to the general pool
+# - images are pulled through the site's registry mirror
+# - Redis is the site-local instance; HPA floor is lower on the smaller cluster
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: commerce-prod
+
+commonAnnotations:
+  platform.akibullah.dev/site: dhaka-dc2
+
+images:
+  - name: ghcr.io/akibullah/url-shortener-analytics
+    newName: registry.dc2.dokan.internal/akibullah/url-shortener-analytics
+
+patches:
+  - path: deployment-placement.yaml
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: url-shortener
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+  - target:
+      kind: ConfigMap
+      name: url-shortener
+    patch: |-
+      - op: replace
+        path: /data/SHORTENER_BASE_URL
+        value: https://s2.dokan.com.bd

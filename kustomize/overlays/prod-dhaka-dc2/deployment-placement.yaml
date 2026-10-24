@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: url-shortener
+spec:
+  template:
+    spec:
+      nodeSelector:
+        dokan.com.bd/pool: general
+      # Replace the whole list: there is no zone label on this site's nodes.
+      topologySpreadConstraints:
+        - $patch: replace
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: url-shortener
+              app.kubernetes.io/instance: url-shortener
+              app.kubernetes.io/component: server
+      containers:
+        - name: app
+          env:
+            - name: SHORTENER_REDIS_URL
+              value: redis://redis.dc2.dokan.internal:6379/0

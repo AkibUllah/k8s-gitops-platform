@@ -1,0 +1,17 @@
+# Inflates the url-shortener chart with the prod values, so sites that manage
+# their cluster with Kustomize consume exactly what Argo CD renders.
+#   kubectl kustomize --enable-helm --load-restrictor LoadRestrictionsNone \
+#     kustomize/overlays/prod-dhaka-dc2
+# (the restrictor flag lets the base read ../../charts and ../../environments).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmGlobals:
+  chartHome: ../../charts
+
+helmCharts:
+  - name: url-shortener
+    releaseName: url-shortener
+    namespace: commerce-prod
+    valuesFile: ../../environments/prod/url-shortener.yaml
+    skipTests: true
