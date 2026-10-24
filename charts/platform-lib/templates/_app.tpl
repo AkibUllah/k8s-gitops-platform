@@ -1,5 +1,6 @@
 {{/*
-platform-lib.app renders every object for a chart's main component. App charts call it from a single template:
+platform-lib.app renders every object for a chart's main component plus its
+datastores. App charts call it from a single template:
 
   {{ include "platform-lib.app" . }}
 
@@ -20,6 +21,8 @@ chart values.
   (include "platform-lib.pdb" $ctx)
   (include "platform-lib.servicemonitor" $ctx)
   (include "platform-lib.networkpolicy" $ctx)
+  (include "platform-lib.postgresql" .)
+  (include "platform-lib.redis" .)
 -}}
 {{- range $docs }}
 {{- if trim . }}

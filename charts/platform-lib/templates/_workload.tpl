@@ -4,6 +4,7 @@ platform-lib.deployment: a Deployment with secure defaults.
 - writable /tmp as a size-limited emptyDir
 - config checksum annotation so ConfigMap changes roll the pods
 - preStop sleep so endpoints are removed before the process gets SIGTERM
+- an init container that waits for the in-chart PostgreSQL, when enabled
 */}}
 {{- define "platform-lib.deployment" -}}
 {{- $v := .values -}}
@@ -77,6 +78,29 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: {{ $v.terminationGracePeriodSeconds }}
+      {{- $pg := .root.Values.postgresql | default dict }}
+      {{- if $pg.enabled }}
+      # Start the app only once the in-chart database accepts connections,
+      # instead of crash-looping through its startup migrations.
+      initContainers:
+        - name: wait-for-postgresql
+          image: {{ $pg.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            # -U is required: without it libpq looks the UID up in /etc/passwd,
+            # fails for our numeric UID and pg_isready never even tries.
+            - {{ printf "until pg_isready -q -h %s-postgresql -p 5432 -U %s; do echo waiting for postgresql; sleep 2; done" (include "platform-lib.fullname" .root) $pg.auth.username | quote }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+          securityContext:
+            {{- toYaml $v.securityContext | nindent 12 }}
+      {{- end }}
       containers:
         - name: {{ .component | default "app" }}
           image: {{ include "platform-lib.image" . | quote }}
@@ -185,21 +209,42 @@ stringData:
 {{- end -}}
 {{- end -}}
 
-{{/* Connection settings for external datastores. */}}
+{{/*
+Connection settings for the in-chart PostgreSQL / Redis, or for external ones.
+$(DB_PASSWORD) is expanded by the kubelet from the variable defined just before.
+*/}}
 {{- define "platform-lib.datastoreEnv" -}}
 {{- $root := .root -}}
 {{- $db := $root.Values.database | default dict -}}
-{{- if and $db.envVar $db.existingSecret }}
+{{- $pg := $root.Values.postgresql | default dict -}}
+{{- $full := include "platform-lib.fullname" $root -}}
+{{- if $db.envVar }}
+{{- if $pg.enabled }}
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "platform-lib.postgresql.secretName" $root }}
+      key: password
+- name: {{ $db.envVar }}
+  value: {{ printf "%s://%s:$(DB_PASSWORD)@%s-postgresql:5432/%s" ($db.scheme | default "postgresql+psycopg") $pg.auth.username $full $pg.auth.database | quote }}
+{{- else if $db.existingSecret }}
 - name: {{ $db.envVar }}
   valueFrom:
     secretKeyRef:
       name: {{ $db.existingSecret }}
       key: {{ $db.existingSecretKey | default "url" }}
 {{- end }}
+{{- end }}
 {{- $cache := $root.Values.cache | default dict -}}
-{{- if and $cache.envVar $cache.url }}
+{{- $redis := $root.Values.redis | default dict -}}
+{{- if $cache.envVar }}
+{{- if $redis.enabled }}
+- name: {{ $cache.envVar }}
+  value: {{ printf "redis://%s-redis:6379/0" $full | quote }}
+{{- else if $cache.url }}
 - name: {{ $cache.envVar }}
   value: {{ $cache.url | quote }}
+{{- end }}
 {{- end }}
 {{- end -}}
 
