@@ -1,0 +1,9 @@
+apiVersion: v2
+name: platform-lib
+description: Shared, opinionated templates for the commerce platform services (workloads, networking, autoscaling, policy-friendly security defaults, demo datastores).
+type: library
+version: 1.0.0
+keywords: [library, deployment, security, networkpolicy]
+maintainers:
+  - name: Akib Jafor
+    url: https://github.com/AkibUllah
