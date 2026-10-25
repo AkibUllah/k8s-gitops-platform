@@ -17,9 +17,9 @@ jobs:
     name: lint, schemas, policies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Cache tools and schemas
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.local/bin
@@ -30,7 +30,7 @@ jobs:
       - name: Validate (helm lint, render, kubeconform x2 versions, conftest, negative checks)
         run: ./scripts/validate.sh
       - name: Upload rendered manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rendered-manifests
           path: build/rendered
@@ -42,8 +42,8 @@ jobs:
     needs: validate
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
         with:
           path: ~/.local/bin
           key: tools-${{ runner.os }}-${{ hashFiles('scripts/install-tools.sh') }}

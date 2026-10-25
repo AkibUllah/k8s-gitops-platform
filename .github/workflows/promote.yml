@@ -26,7 +26,7 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check the direction
         run: |
           case "${{ inputs.from }}->${{ inputs.to }}" in
@@ -44,7 +44,7 @@ jobs:
           yq -i ".image.tag = \"$tag\"" "$dst"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "old=$old" >> "$GITHUB_OUTPUT"
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         with:
           branch: promote/${{ inputs.service }}-${{ inputs.to }}-${{ steps.tag.outputs.tag }}
           commit-message: "chore(${{ inputs.to }}): promote ${{ inputs.service }} to ${{ steps.tag.outputs.tag }}"
