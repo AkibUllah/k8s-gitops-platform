@@ -4,6 +4,8 @@
 GitOps delivery for three of my services (a payment gateway, a webhook relay and a URL shortener): a reusable Helm library chart, per-environment values, Argo CD ApplicationSets, OPA/Rego policies with unit tests, and a CI pipeline that validates every render and deploys the real images to a kind cluster.
 
 [![CI](https://github.com/AkibUllah/k8s-gitops-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/AkibUllah/k8s-gitops-platform/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/AkibUllah/k8s-gitops-platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/AkibUllah/k8s-gitops-platform/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/AkibUllah/k8s-gitops-platform)](https://github.com/AkibUllah/k8s-gitops-platform/releases)
 ![Helm](https://img.shields.io/badge/helm-3.22-0F1689)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-1.34%20%7C%201.36-326CE5)
 ![Policies](https://img.shields.io/badge/policies-conftest%20%2F%20rego-7D9199)
@@ -17,6 +19,16 @@ GitOps delivery for three of my services (a payment gateway, a webhook relay and
 | Local | `make tools && make validate && make e2e-local` (see Quick Start) |
 
 There is no Render blueprint or GitHub Pages site: the deliverable is cluster configuration, and the Codespace runs it on a real (kind) cluster.
+
+## Screenshots
+
+![make validate](docs/images/validate.png)
+
+*`make validate` locally: `helm lint` for every chart and environment, 14 renders, kubeconform against Kubernetes 1.34 and 1.36 (178 resources valid), the Rego unit tests, per-document and cross-document policies, and the negative checks.*
+
+![helm template](docs/images/helm-template.png)
+
+*`helm template` for the prod payment gateway: the objects the library chart renders, the pod security context it sets by default, and the values schema rejecting `image.tag=latest`.*
 
 ## Why this exists
 
@@ -201,11 +213,11 @@ The local runs also found two real bugs that are now fixed: apps crash-looped un
 
 ## Roadmap
 
-- Argo CD Image Updater (or Renovate) writing dev tag bumps back to Git instead of service CI
-- Argo Rollouts canaries for the payment gateway, gated on error rate from Prometheus once the services expose metrics
-- Kyverno admission policies mirroring the Rego rules, so the guard also holds for `kubectl apply`
-- Per-namespace ResourceQuota/LimitRange managed by the platform team's own ApplicationSet
-- Chart publishing to an OCI registry with provenance, instead of `file://` dependencies
+- [ ] Argo CD Image Updater (or Renovate) writing dev tag bumps back to Git instead of service CI (#1)
+- [ ] Argo Rollouts canaries for the payment gateway, gated on error rate from Prometheus once the services expose metrics (#2)
+- [ ] Kyverno admission policies mirroring the Rego rules, so the guard also holds for `kubectl apply` (#3)
+- [ ] Per-namespace ResourceQuota/LimitRange managed by the platform team's own ApplicationSet (#4)
+- [ ] Chart publishing to an OCI registry with provenance, instead of `file://` dependencies (#5)
 
 ## License
 
