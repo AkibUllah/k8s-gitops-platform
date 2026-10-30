@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # Mondays: catches drift in tools, images and schemas with no pushes
 
 permissions:
   contents: read
@@ -28,7 +30,16 @@ jobs:
       - name: Install pinned tools
         run: ./scripts/install-tools.sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Validate (helm lint, render, kubeconform x2 versions, conftest, negative checks)
-        run: ./scripts/validate.sh
+        run: |
+          mkdir -p build/report
+          set -o pipefail
+          ./scripts/validate.sh 2>&1 | tee build/report/validate.log
+      - name: Upload validation log
+        uses: actions/upload-artifact@v7
+        with:
+          name: validate-log
+          path: build/report/validate.log
+          retention-days: 30
       - name: Upload rendered manifests
         uses: actions/upload-artifact@v7
         with:
@@ -55,3 +66,44 @@ jobs:
         run: ./scripts/e2e-kind.sh
         env:
           IMAGE_SOURCE: git
+          REPORT_DIR: build/report/e2e
+      - name: Upload cluster evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-evidence
+          path: build/report/e2e
+          retention-days: 30
+
+  # Turns the evidence of a green run on main into the proof page on GitHub Pages.
+  proof-page:
+    name: publish proof page
+    runs-on: ubuntu-latest
+    needs: [validate, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: validate-log
+          path: build/report
+      - uses: actions/download-artifact@v8
+        with:
+          name: e2e-evidence
+          path: build/report/e2e
+      - name: Build the page
+        run: python3 scripts/build-report.py --e2e build/report/e2e --validate build/report/validate.log --out build/site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/site
+      - id: deploy
+        uses: actions/deploy-pages@v5
