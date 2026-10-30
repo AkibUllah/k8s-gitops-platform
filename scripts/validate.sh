@@ -4,7 +4,8 @@
 #   2. render everything (scripts/render.sh)
 #   3. kubeconform: Kubernetes + CRD schemas, strict, for each target version
 #   4. conftest: policy unit tests, per-document rules, cross-document rules
-#   5. negative checks: things that must be rejected are rejected
+#   5. unit tests for the proof page builder (scripts/build-report.py)
+#   6. negative checks: things that must be rejected are rejected
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -49,6 +50,9 @@ for f in build/rendered/*/*.yaml; do
     || { conftest test --combine --policy policies --namespace combined "$f"; exit 1; }
   echo "ok  $f"
 done
+
+step "proof page builder unit tests"
+python3 -m unittest discover -s scripts -p 'test_*.py'
 
 step "negative checks"
 if helm template x charts/payment-gateway --set image.tag=latest >/dev/null 2>&1; then

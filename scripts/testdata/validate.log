@@ -1,0 +1,68 @@
+
+==> helm lint
+ok  payment-gateway (dev)
+ok  payment-gateway (staging)
+ok  payment-gateway (prod)
+ok  webhook-relay (dev)
+ok  webhook-relay (staging)
+ok  webhook-relay (prod)
+ok  url-shortener (dev)
+ok  url-shortener (staging)
+ok  url-shortener (prod)
+
+==> render
+  rendered build/rendered/ci/payment-gateway-full-values.yaml
+  rendered build/rendered/ci/url-shortener-full-values.yaml
+  rendered build/rendered/ci/webhook-relay-full-values.yaml
+  rendered build/rendered/ci/webhook-relay-inprocess-worker-values.yaml
+  rendered build/rendered/dev/payment-gateway.yaml
+  rendered build/rendered/dev/url-shortener.yaml
+  rendered build/rendered/dev/webhook-relay.yaml
+  rendered build/rendered/kustomize/prod-dhaka-dc2.yaml
+  rendered build/rendered/prod/payment-gateway.yaml
+  rendered build/rendered/prod/url-shortener.yaml
+  rendered build/rendered/prod/webhook-relay.yaml
+  rendered build/rendered/staging/payment-gateway.yaml
+  rendered build/rendered/staging/url-shortener.yaml
+  rendered build/rendered/staging/webhook-relay.yaml
+
+==> kubeconform (Kubernetes 1.34.11)
+Summary: 178 resources found in 20 files - Valid: 178, Invalid: 0, Errors: 0, Skipped: 0
+
+==> kubeconform (Kubernetes 1.36.4)
+Summary: 178 resources found in 20 files - Valid: 178, Invalid: 0, Errors: 0, Skipped: 0
+
+==> conftest verify (policy unit tests)
+
+39 tests, 39 passed, 0 warnings, 0 failures, 0 exceptions, 0 skipped
+
+==> conftest: per-document rules
+WARN - build/rendered/prod/webhook-relay.yaml - main - Deployment/webhook-relay-worker: probes exempted (queue worker without a network endpoint; crashes restart the container)
+WARN - build/rendered/staging/webhook-relay.yaml - main - Deployment/webhook-relay-worker: probes exempted (queue worker without a network endpoint; crashes restart the container)
+WARN - build/rendered/ci/webhook-relay-full-values.yaml - main - Deployment/webhook-relay-worker: probes exempted (queue worker without a network endpoint; crashes restart the container)
+WARN - build/rendered/dev/webhook-relay.yaml - main - Deployment/webhook-relay-worker: probes exempted (queue worker without a network endpoint; crashes restart the container)
+
+3591 tests, 3587 passed, 4 warnings, 0 failures, 0 exceptions
+
+==> conftest: cross-document rules (one release at a time)
+ok  build/rendered/ci/payment-gateway-full-values.yaml
+ok  build/rendered/ci/url-shortener-full-values.yaml
+ok  build/rendered/ci/webhook-relay-full-values.yaml
+ok  build/rendered/ci/webhook-relay-inprocess-worker-values.yaml
+ok  build/rendered/dev/payment-gateway.yaml
+ok  build/rendered/dev/url-shortener.yaml
+ok  build/rendered/dev/webhook-relay.yaml
+ok  build/rendered/kustomize/prod-dhaka-dc2.yaml
+ok  build/rendered/prod/payment-gateway.yaml
+ok  build/rendered/prod/url-shortener.yaml
+ok  build/rendered/prod/webhook-relay.yaml
+ok  build/rendered/staging/payment-gateway.yaml
+ok  build/rendered/staging/url-shortener.yaml
+ok  build/rendered/staging/webhook-relay.yaml
+
+==> negative checks
+ok  image.tag=latest is rejected at render time
+ok  policies/fixtures/noncompliant.yaml is rejected
+ok  values.schema.json rejects invalid values
+
+All validation passed.
