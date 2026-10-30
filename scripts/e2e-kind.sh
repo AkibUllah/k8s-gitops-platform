@@ -9,6 +9,9 @@
 #   4. wait for rollouts, run `helm test`, curl /health through port-forwards,
 #      exercise the real APIs and probe NetworkPolicy enforcement
 # Set KEEP_CLUSTER=1 to leave the cluster running afterwards.
+# Set REPORT_DIR to also write the evidence of a run there (cluster, pods,
+# releases and every check's result); scripts/build-report.py turns it into the
+# proof page published to GitHub Pages.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,6 +23,7 @@ SOURCES_DIR=${SOURCES_DIR:-..}               # where sibling repos live for IMAG
 BASE_PORT=${BASE_PORT:-28080}
 KEEP_CLUSTER=${KEEP_CLUSTER:-0}
 KIND_CONFIG=${KIND_CONFIG:-e2e/kind-cluster.yaml}   # e2e/kind-single-node.yaml on small machines
+REPORT_DIR=${REPORT_DIR:-}
 
 declare -A REPO=(
   [payment-gateway]=fastapi-payment-gateway
@@ -31,6 +35,19 @@ declare -A STANDIN=()
 PF_PIDS=()
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+
+# report FILE CMD...: save a command's output as evidence (no-op without REPORT_DIR)
+report() {
+  [[ -n "$REPORT_DIR" ]] || return 0
+  local file=$1; shift
+  "$@" >"$REPORT_DIR/$file" 2>&1 || true
+}
+
+# check NAME DETAIL: record a passed check
+check() {
+  [[ -n "$REPORT_DIR" ]] || return 0
+  printf '%s\t%s\n' "$1" "$2" >>"$REPORT_DIR/checks.tsv"
+}
 fail() { printf '\033[1;31mFAIL\033[0m %s\n' "$*"; diagnostics; exit 1; }
 
 diagnostics() {
@@ -46,6 +63,12 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+if [[ -n "$REPORT_DIR" ]]; then
+  mkdir -p "$REPORT_DIR"
+  : >"$REPORT_DIR/checks.tsv"
+  date -u +%Y-%m-%dT%H:%M:%SZ >"$REPORT_DIR/started"
+fi
 
 build_image() {
   local chart=$1 repo=${REPO[$1]} ref="ghcr.io/akibullah/${REPO[$1]}:e2e" ctx out
@@ -77,6 +100,8 @@ done
 log "creating kind cluster $CLUSTER ($KIND_CONFIG, $KIND_NODE_IMAGE)"
 kind delete cluster --name "$CLUSTER" >/dev/null 2>&1 || true
 kind create cluster --name "$CLUSTER" --image "$KIND_NODE_IMAGE" --config "$KIND_CONFIG" --wait 300s
+report nodes.txt kubectl get nodes -o wide
+report server-version.txt kubectl version -o json
 for chart in "${CHARTS[@]}"; do
   [[ -n "${STANDIN[$chart]:-}" ]] && continue
   kind load docker-image --name "$CLUSTER" "ghcr.io/akibullah/${REPO[$chart]}:e2e" >/dev/null
@@ -106,11 +131,13 @@ for s in $(kubectl -n "$NAMESPACE" get statefulset -o name); do
   kubectl -n "$NAMESPACE" rollout status "$s" --timeout=180s || fail "$s did not become ready"
 done
 kubectl -n "$NAMESPACE" get pods -o wide
+check "Rollouts" "every Deployment and StatefulSet in $NAMESPACE is ready"
 
 log "helm test"
 for chart in "${CHARTS[@]}"; do
   helm test "$chart" --namespace "$NAMESPACE" --timeout 3m >/dev/null || fail "helm test $chart"
   echo "  $chart: test-health passed"
+  check "helm test $chart" "test-health hook passed"
 done
 
 log "health endpoints through port-forward"
@@ -133,6 +160,7 @@ for chart in "${CHARTS[@]}"; do
   body=$(curl -fsS --retry 5 --retry-delay 2 --retry-all-errors "http://127.0.0.1:${PORT[$chart]}/health") \
     || fail "GET /health on $chart"
   echo "  $chart: ${body:-<empty 200 response>}"
+  check "GET /health $chart" "${body:-<empty 200 response>}"
 done
 
 if [[ -z "${STANDIN[url-shortener]:-}" ]]; then
@@ -144,6 +172,7 @@ if [[ -z "${STANDIN[url-shortener]:-}" ]]; then
   code=$(curl -s -o /dev/null -w '%{http_code}' "$base/eid-sale")
   [[ "$code" == "302" ]] || fail "GET /eid-sale returned $code, want 302"
   echo "  POST /api/v1/links -> 201, GET /eid-sale -> 302"
+  check "URL shortener API" "POST /api/v1/links -> 201, GET /eid-sale -> 302 (PostgreSQL, Redis and secrets)"
 fi
 
 if [[ -z "${STANDIN[webhook-relay]:-}" ]]; then
@@ -165,6 +194,7 @@ if [[ -z "${STANDIN[webhook-relay]:-}" ]]; then
   done
   [[ "$attempts" -ge 1 ]] || fail "worker never attempted the delivery"
   echo "  delivery attempted $attempts time(s) by webhook-relay-worker (receiver rejects the unsigned call; the attempt is what matters)"
+  check "Webhook relay worker" "event published through the API, delivery attempted $attempts time(s) by the separate worker Deployment"
 fi
 
 log "NetworkPolicy: a pod outside the platform must not reach the payment gateway"
@@ -191,8 +221,14 @@ for _ in $(seq 1 45); do
   sleep 2
 done
 case "$phase" in
-  Failed) echo "  blocked: the outsider's request timed out (the CNI enforces NetworkPolicy)" ;;
-  Succeeded) echo "  reachable: this CNI does not enforce NetworkPolicy (got HTTP $(kubectl -n "$NAMESPACE" logs np-outsider))" ;;
+  Failed)
+    echo "  blocked: the outsider's request timed out (the CNI enforces NetworkPolicy)"
+    check "NetworkPolicy" "a pod outside the platform timed out reaching the payment gateway"
+    ;;
+  Succeeded)
+    echo "  reachable: this CNI does not enforce NetworkPolicy (got HTTP $(kubectl -n "$NAMESPACE" logs np-outsider))"
+    check "NetworkPolicy" "not enforced by this CNI (the outsider pod got a response)"
+    ;;
   *) fail "outsider probe pod stuck in phase '$phase'" ;;
 esac
 
@@ -200,3 +236,15 @@ log "PASS: ${#CHARTS[@]} releases healthy in $NAMESPACE"
 for chart in "${CHARTS[@]}"; do
   printf '  %-16s %s\n' "$chart" "$([[ -n "${STANDIN[$chart]:-}" ]] && echo stand-in || echo "real image")"
 done
+
+if [[ -n "$REPORT_DIR" ]]; then
+  kubectl -n "$NAMESPACE" delete pod np-outsider --ignore-not-found >/dev/null
+  report pods.txt kubectl -n "$NAMESPACE" get pods -o wide
+  report workloads.txt kubectl -n "$NAMESPACE" get deploy,statefulset,svc,hpa,pdb,networkpolicy
+  report releases.txt helm list --namespace "$NAMESPACE"
+  report namespace.txt kubectl get namespace "$NAMESPACE" --show-labels
+  for chart in "${CHARTS[@]}"; do
+    printf '%s\t%s\n' "$chart" "$([[ -n "${STANDIN[$chart]:-}" ]] && echo stand-in || echo "real image")"
+  done >"$REPORT_DIR/images.tsv"
+  date -u +%Y-%m-%dT%H:%M:%SZ >"$REPORT_DIR/finished"
+fi
