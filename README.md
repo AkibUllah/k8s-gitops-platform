@@ -15,10 +15,11 @@ GitOps delivery for three of my services (a payment gateway, a webhook relay and
 
 | | |
 |---|---|
+| Live proof | **[akibullah.github.io/k8s-gitops-platform](https://akibullah.github.io/k8s-gitops-platform/)**: evidence from the latest green CI run on `main`, refreshed on every push and every Monday. It shows the validation numbers, every check run against the three services on a real kind cluster, and the raw `kubectl` / `helm` output |
 | Run in your browser | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/AkibUllah/k8s-gitops-platform?quickstart=1) — installs the pinned toolchain, runs `make validate`, then `make demo-up` creates a 3-node kind cluster, builds the three service images from their repositories and installs every chart (progress in `/tmp/demo-up.log`). Then: `kubectl -n commerce-e2e get pods`, `kubectl -n commerce-e2e port-forward svc/url-shortener 8080:80`. Needs a 4-core / 8 GB machine type. |
 | Local | `make tools && make validate && make e2e-local` (see Quick Start) |
 
-There is no Render blueprint or GitHub Pages site: the deliverable is cluster configuration, and the Codespace runs it on a real (kind) cluster.
+There is no Render blueprint: the deliverable is cluster configuration, not a hosted app. Instead of keeping a paid cluster running, CI creates a real cluster for each run, deploys and tests everything, deletes it, and publishes what happened to the proof page.
 
 ## Screenshots
 
@@ -46,6 +47,7 @@ Each of these services started life with a `docker-compose.yml`, which is fine u
 - **Kustomize overlay** for an on-prem Dhaka site that consumes the Helm output and patches placement, registry mirror and Redis endpoint
 - **Secrets guide** for External Secrets Operator and Sealed Secrets, with validated example manifests, and a policy that blocks plain Secrets in staging/prod renders
 - **CI**: `helm lint --strict`, render of every chart × environment, kubeconform against Kubernetes 1.34 and 1.36 plus CRD schemas, conftest, negative checks, and a kind e2e job; a `workflow_dispatch` promotion workflow opens tag-bump PRs
+- **Live proof page**: CI also runs every Monday, so drift in tools, images or schemas shows up without a push. Each green run on `main` publishes its evidence to GitHub Pages: the validation numbers, every end-to-end check, the images used (real build or stand-in) and the raw `kubectl get pods`, workload and `helm list` output. `scripts/build-report.py` (standard library only, unit tested) builds the page, and refuses to publish if the evidence is incomplete
 
 ## Architecture
 
@@ -62,6 +64,7 @@ flowchart LR
     PROMO[promote workflow] -- "PR: tag bump dev→staging→prod" --> REPO
     REPO --> CI{CI<br/>lint · render · kubeconform<br/>conftest · kind e2e}
     CI -- merge --> MAIN[main]
+    CI -- "evidence of the green run" --> PAGES[proof page<br/>GitHub Pages]
 
     subgraph ARGO[Argo CD]
       ROOT[commerce-root<br/>app of apps] --> PROJ[AppProject commerce]
@@ -188,8 +191,8 @@ kustomize/base, kustomize/overlays/prod-dhaka-dc2
 policies/kubernetes/*.rego, policies/combined/*.rego (+ *_test.rego, fixtures/)
 docs/secrets.md, docs/examples/    # ESO ClusterSecretStore / ExternalSecret, SealedSecret
 e2e/                               # kind cluster config, e2e and stand-in values
-scripts/                           # install-tools, render, validate, e2e-kind
-.github/workflows/                 # ci.yml, promote.yml
+scripts/                           # install-tools, render, validate, e2e-kind, build-report (+ tests)
+.github/workflows/                 # ci.yml (+ proof page), promote.yml
 ```
 
 ## Testing
@@ -199,7 +202,7 @@ make validate    # what CI's validate job runs
 make e2e-local   # kind end to end
 ```
 
-**Static validation** (`make validate`, also in CI): `helm lint --strict` for 3 charts × 3 environments; 14 rendered releases (9 environment renders, 4 `ci/` feature renders, 1 Kustomize overlay); kubeconform strict against Kubernetes 1.34.11 and 1.36.4 plus CRD schemas: 178 resources valid on both versions, including the Argo CD and External Secrets/Sealed Secrets manifests; `conftest verify`: 39/39 Rego unit tests pass; the per-document policies pass on every release (warnings list the one annotated probe exemption, the webhook-relay worker); cross-document policies pass release by release; negative checks confirm that `image.tag=latest`, an invalid `values.schema.json` input and a deliberately non-compliant manifest are all rejected.
+**Static validation** (`make validate`, also in CI): `helm lint --strict` for 3 charts × 3 environments; 14 rendered releases (9 environment renders, 4 `ci/` feature renders, 1 Kustomize overlay); kubeconform strict against Kubernetes 1.34.11 and 1.36.4 plus CRD schemas: 178 resources valid on both versions, including the Argo CD and External Secrets/Sealed Secrets manifests; `conftest verify`: 39/39 Rego unit tests pass; the per-document policies pass on every release (warnings list the one annotated probe exemption, the webhook-relay worker); cross-document policies pass release by release; negative checks confirm that `image.tag=latest`, an invalid `values.schema.json` input and a deliberately non-compliant manifest are all rejected. It also runs the 9 unit tests of the proof page builder (`python3 -m unittest discover -s scripts -p 'test_*.py'`).
 
 **End to end on kind** (`scripts/e2e-kind.sh`, CI job `e2e`). Last local run, on the default 3-node cluster (Kubernetes 1.36.4) with all three service images built from their Dockerfiles:
 

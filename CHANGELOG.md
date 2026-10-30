@@ -7,12 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
 ### Added
+
+- Live proof page on GitHub Pages. Each green CI run on `main` publishes its evidence: validation numbers, every end-to-end check against the three services on a kind cluster, the images used and the raw `kubectl` / `helm` output.
+- `REPORT_DIR` option for `scripts/e2e-kind.sh` that saves that evidence, and `scripts/build-report.py` (with unit tests, run by `make validate`) that turns it into the page.
+- Weekly scheduled CI run (Mondays), so drift in tools, images or schemas is caught without a push.
 
 - CodeQL analysis for GitHub Actions workflows on pushes and pull requests to `main` and on a weekly schedule.
 - Dependabot version updates for GitHub Actions, with minor and patch updates grouped per ecosystem.
 - README screenshots: `make validate` output and a `helm template` render.
 - Roadmap items tracked as GitHub issues under the v0.2.0 milestone.
+
+### Changed
+
+- CI keeps the validation log and the end-to-end evidence as artifacts for 30 days.
 
 ## [0.1.0] - 2026-10-25
 
@@ -31,5 +41,6 @@ First public release of k8s-gitops-platform.
 - **Secrets guide** for External Secrets Operator and Sealed Secrets, with validated example manifests, and a policy that blocks plain Secrets in staging/prod renders
 - **CI**: `helm lint --strict`, render of every chart × environment, kubeconform against Kubernetes 1.34 and 1.36 plus CRD schemas, conftest, negative checks, and a kind e2e job; a `workflow_dispatch` promotion workflow opens tag-bump PRs
 
-[Unreleased]: https://github.com/AkibUllah/k8s-gitops-platform/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AkibUllah/k8s-gitops-platform/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AkibUllah/k8s-gitops-platform/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AkibUllah/k8s-gitops-platform/releases/tag/v0.1.0
